@@ -29,6 +29,8 @@ type Store interface {
 
 	// Save should persist session to the underlying store implementation.
 	Save(r *http.Request, w http.ResponseWriter, s *Session) error
+
+	SaveOnileSession(session *Session) (*string, error)
 }
 
 // CookieStore ----------------------------------------------------------------
@@ -94,6 +96,10 @@ func (s *CookieStore) New(r *http.Request, name string) (*Session, error) {
 		}
 	}
 	return session, err
+}
+
+func (s *CookieStore) SaveOnileSession(session *Session) (*string, error) {
+	return nil, nil
 }
 
 // Save adds a single session to the response.
@@ -234,6 +240,33 @@ func (s *FilesystemStore) Save(r *http.Request, w http.ResponseWriter,
 	}
 	http.SetCookie(w, NewCookie(session.Name(), encoded, session.Options))
 	return nil
+}
+
+func (s *FilesystemStore) SaveOnileSession(
+	session *Session) (*string, error) {
+	// Delete if max-age is <= 0
+	if session.Options.MaxAge <= 0 {
+		if err := s.erase(session); err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	if session.ID == "" {
+		// Because the ID is used in the filename, encode it to
+		// use alphanumeric characters only.
+		session.ID = base32RawStdEncoding.EncodeToString(
+			securecookie.GenerateRandomKey(32))
+	}
+	if err := s.save(session); err != nil {
+		return nil, err
+	}
+	encoded, err := securecookie.EncodeMulti(session.Name(), session.ID,
+		s.Codecs...)
+	if err != nil {
+		return nil, err
+	}
+	return &encoded, nil
 }
 
 // MaxAge sets the maximum age for the store and the underlying cookie

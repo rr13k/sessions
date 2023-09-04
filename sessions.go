@@ -81,6 +81,10 @@ func (s *Session) Save(r *http.Request, w http.ResponseWriter) error {
 	return s.store.Save(r, w, s)
 }
 
+func (s *Session) SaveBySession() (*string, error) {
+	return s.store.SaveOnileSession(s)
+}
+
 // Name returns the name used to register the session.
 func (s *Session) Name() string {
 	return s.name
