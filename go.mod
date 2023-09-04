@@ -1,4 +1,4 @@
-module github.com/gorilla/sessions
+module github.com/rr13k/sessions
 
 go 1.19
 
