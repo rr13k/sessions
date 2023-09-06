@@ -2,8 +2,10 @@ package sessions
 
 import (
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -26,6 +28,30 @@ func TestGH8CookieStore(t *testing.T) {
 	if session.Options.Path != originalPath {
 		t.Fatalf("bad session path: got %q, want %q", session.Options.Path, originalPath)
 	}
+}
+
+// 测试通过session str存取
+func TestGH8FilesystemStoreByString(t *testing.T) {
+	originalPath := "./__sessions"
+	store := NewFilesystemStore(originalPath, []byte(os.Getenv("SESSION_KEY)")))
+	store.Options.Path = originalPath
+	store.Options.MaxAge = 86400
+
+	// 存session
+	t_sis := NewSession(store, "hero")
+	t_sis.Values["user_id"] = 5
+	t_sis.Options.MaxAge = 86400
+	my_session, _ := store.SaveOnileSession(t_sis)
+
+	fmt.Println("user_id: ", t_sis.Values["user_id"])
+
+	// 取session
+	kk, err := store.GetByToken(*my_session, "hero")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(kk.Values["user_id"])
+	fmt.Println(kk)
 }
 
 // Test for GH-8 for FilesystemStore

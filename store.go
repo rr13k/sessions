@@ -26,9 +26,12 @@ type Store interface {
 	// Note that New should never return a nil session, even in the case of
 	// an error if using the Registry infrastructure to cache the session.
 	New(r *http.Request, name string) (*Session, error)
+	NewBySession(session_id string, name string) (*Session, error)
 
 	// Save should persist session to the underlying store implementation.
 	Save(r *http.Request, w http.ResponseWriter, s *Session) error
+
+	GetByToken(token string, name string) (*Session, error)
 
 	SaveOnileSession(session *Session) (*string, error)
 }
@@ -96,6 +99,14 @@ func (s *CookieStore) New(r *http.Request, name string) (*Session, error) {
 		}
 	}
 	return session, err
+}
+
+func (s *CookieStore) NewBySession(r string, name string) (*Session, error) {
+	return nil, nil
+}
+
+func (s *CookieStore) GetByToken(token string, name string) (*Session, error) {
+	return nil, nil
 }
 
 func (s *CookieStore) SaveOnileSession(session *Session) (*string, error) {
@@ -184,6 +195,15 @@ func (s *FilesystemStore) Get(r *http.Request, name string) (*Session, error) {
 	return GetRegistry(r).Get(s, name)
 }
 
+func (s *FilesystemStore) GetByToken(token string, name string) (*Session, error) {
+	newRegistry := &Registry{
+		request:  nil,
+		sessions: make(map[string]sessionInfo),
+	}
+
+	return newRegistry.GetBySession(s, name, token)
+}
+
 // New returns a session for the given name without adding it to the registry.
 //
 // See CookieStore.New().
@@ -200,6 +220,22 @@ func (s *FilesystemStore) New(r *http.Request, name string) (*Session, error) {
 			if err == nil {
 				session.IsNew = false
 			}
+		}
+	}
+	return session, err
+}
+
+func (s *FilesystemStore) NewBySession(session_id string, name string) (*Session, error) {
+	session := NewSession(s, name)
+	opts := *s.Options
+	session.Options = &opts
+	session.IsNew = true
+	var err error
+	err = securecookie.DecodeMulti(name, session_id, &session.ID, s.Codecs...)
+	if err == nil {
+		err = s.load(session)
+		if err == nil {
+			session.IsNew = false
 		}
 	}
 	return session, err

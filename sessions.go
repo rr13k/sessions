@@ -148,6 +148,21 @@ func (s *Registry) Get(store Store, name string) (session *Session, err error) {
 	return
 }
 
+func (s *Registry) GetBySession(store Store, name string, session_id string) (session *Session, err error) {
+	if !isCookieNameValid(name) {
+		return nil, fmt.Errorf("sessions: invalid character in cookie name: %s", name)
+	}
+	if info, ok := s.sessions[name]; ok {
+		session, err = info.s, info.e
+	} else {
+		session, err = store.NewBySession(session_id, name)
+		session.name = name
+		s.sessions[name] = sessionInfo{s: session, e: err}
+	}
+	session.store = store
+	return
+}
+
 // Save saves all sessions registered for the current request.
 func (s *Registry) Save(w http.ResponseWriter) error {
 	var errMulti MultiError
